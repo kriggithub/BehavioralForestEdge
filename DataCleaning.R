@@ -136,9 +136,9 @@ rivBinData <- primateData %>%
                    wtAvgDistNN = weighted.mean(AvgDistNN, nObs, na.rm = T),
                    wtSdDistNN = sqrt(wtd.var(AvgDistNN, nObs, na.rm = T)),
                    wtSeDistNN = wtSdDistNN/sqrt(nMonkeys),
-                   wtAvgAnthDist = weighted.mean(AnthDist, nObs, na.rm = T),
-                   wtSdAnthDist = sqrt(wtd.var(AnthDist, nObs, na.rm = T)),
-                   wtSeAnthDist = wtSdAnthDist/sqrt(nMonkeys))
+                   wtAvgRivDist = weighted.mean(RivDist, nObs, na.rm = T),
+                   wtSdRivDist = sqrt(wtd.var(RivDist, nObs, na.rm = T)),
+                   wtSeRivDist = wtSdRivDist/sqrt(nMonkeys))
 
 
 write.csv(rivBinData, file = "rivBinData.csv")
