@@ -68,42 +68,35 @@ anthBinData <- primateData %>%
   filter(row_number()==1) %>%
   ungroup() %>% 
   group_by(bin) %>% 
-  dplyr::summarize(wtAvgRestPct = weighted.mean(RestPct, nObs, na.rm = T),
+  dplyr::summarize(nMonkeys = n(),
+                   wtAvgRestPct = weighted.mean(RestPct, nObs, na.rm = T),
                    wtSdRestPct = sqrt(wtd.var(RestPct, nObs, na.rm = T)),
+                   wtSeRestPct = wtSdRestPct/sqrt(nMonkeys),
                    wtAvgMovingPct = weighted.mean(MovingPct, nObs, na.rm = T),
                    wtSdMovingPct = sqrt(wtd.var(MovingPct, nObs, na.rm = T)),
+                   wtSeMovingPct = wtSdMovingPct/sqrt(nMonkeys),
                    wtAvgFeedingPct = weighted.mean(FeedingPct, nObs, na.rm = T),
                    wtSdFeedingPct = sqrt(wtd.var(FeedingPct, nObs, na.rm = T)),
+                   wtSeFeedingPct = wtSdFeedingPct/sqrt(nMonkeys),
                    wtAvgOtherPct = weighted.mean(OtherPct, nObs, na.rm = T),
                    wtSdOtherPct = sqrt(wtd.var(OtherPct, nObs, na.rm = T)),
+                   wtSeOtherPct = wtSdOtherPct/sqrt(nMonkeys),
                    wtAvgNumNN = weighted.mean(AvgNumNN, nObs, na.rm = T),
                    wtSdNumNN = sqrt(wtd.var(AvgNumNN, nObs, na.rm = T)),
+                   wtSeNumNN = wtSdNumNN/sqrt(nMonkeys),
                    wtAvgDistNN = weighted.mean(AvgDistNN, nObs, na.rm = T),
                    wtSdDistNN = sqrt(wtd.var(AvgDistNN, nObs, na.rm = T)),
+                   wtSeDistNN = wtSdDistNN/sqrt(nMonkeys),
                    wtAvgAnthDist = weighted.mean(AnthDist, nObs, na.rm = T),
-                   wtSdAnthDist = sqrt(wtd.var(AnthDist, nObs, na.rm = T)))
+                   wtSdAnthDist = sqrt(wtd.var(AnthDist, nObs, na.rm = T)),
+                   wtSeAnthDist = wtSdAnthDist/sqrt(nMonkeys))
 
-wtSeAthnDist = a
+
 # SE = Sd / sqrt (n Monkeys in bin)
 
 
 
-anthBinData2 <- primateData %>% 
-  mutate(bin = as.factor(ceiling(AnthDist / 15))) %>% 
-  group_by(ID) %>% 
-  mutate(RestPct = mean(Activity == "R")*100,
-         MovingPct = mean(Activity == "L")*100,
-         FeedingPct = mean(Activity == "F")*100,
-         OtherPct = mean(!(Activity %in% c("R", "L", "F")))*100,
-         AvgNumNN = mean(NumNN, na.rm = T),
-         AvgDistNN = mean(DistNN, na.rm = T),
-         RivDist = mean(RivDist),
-         AnthDist = mean(AnthDist),
-         nObs = n())
-
-
-
-# write.csv(anthBinData, file = "anthBinData.csv")
+write.csv(anthBinData, file = "anthBinData.csv")
 
 
 
@@ -124,23 +117,31 @@ rivBinData <- primateData %>%
   filter(row_number()==1) %>%
   ungroup() %>% 
   group_by(bin) %>% 
-  dplyr::summarize(wtAvgRestPct = weighted.mean(RestPct, nObs),
-                   wtSdRestPct = sqrt(wtd.var(RestPct, nObs)),
-                   wtAvgMovingPct = weighted.mean(MovingPct, nObs),
-                   wtSdMovingPct = sqrt(wtd.var(MovingPct, nObs)),
-                   wtAvgFeedingPct = weighted.mean(FeedingPct, nObs),
-                   wtSdFeedingPct = sqrt(wtd.var(FeedingPct, nObs)),
-                   wtAvgOtherPct = weighted.mean(OtherPct, nObs),
-                   wtSdOtherPct = sqrt(wtd.var(OtherPct, nObs)),
+  dplyr::summarize(nMonkeys = n(),
+                   wtAvgRestPct = weighted.mean(RestPct, nObs, na.rm = T),
+                   wtSdRestPct = sqrt(wtd.var(RestPct, nObs, na.rm = T)),
+                   wtSeRestPct = wtSdRestPct/sqrt(nMonkeys),
+                   wtAvgMovingPct = weighted.mean(MovingPct, nObs, na.rm = T),
+                   wtSdMovingPct = sqrt(wtd.var(MovingPct, nObs, na.rm = T)),
+                   wtSeMovingPct = wtSdMovingPct/sqrt(nMonkeys),
+                   wtAvgFeedingPct = weighted.mean(FeedingPct, nObs, na.rm = T),
+                   wtSdFeedingPct = sqrt(wtd.var(FeedingPct, nObs, na.rm = T)),
+                   wtSeFeedingPct = wtSdFeedingPct/sqrt(nMonkeys),
+                   wtAvgOtherPct = weighted.mean(OtherPct, nObs, na.rm = T),
+                   wtSdOtherPct = sqrt(wtd.var(OtherPct, nObs, na.rm = T)),
+                   wtSeOtherPct = wtSdOtherPct/sqrt(nMonkeys),
                    wtAvgNumNN = weighted.mean(AvgNumNN, nObs, na.rm = T),
                    wtSdNumNN = sqrt(wtd.var(AvgNumNN, nObs, na.rm = T)),
+                   wtSeNumNN = wtSdNumNN/sqrt(nMonkeys),
                    wtAvgDistNN = weighted.mean(AvgDistNN, nObs, na.rm = T),
                    wtSdDistNN = sqrt(wtd.var(AvgDistNN, nObs, na.rm = T)),
-                   wtAvgAnthDist = weighted.mean(RivDist, nObs, na.rm = T),
-                   wtSdAnthDist = sqrt(wtd.var(RivDist, nObs, na.rm = T)))
+                   wtSeDistNN = wtSdDistNN/sqrt(nMonkeys),
+                   wtAvgAnthDist = weighted.mean(AnthDist, nObs, na.rm = T),
+                   wtSdAnthDist = sqrt(wtd.var(AnthDist, nObs, na.rm = T)),
+                   wtSeAnthDist = wtSdAnthDist/sqrt(nMonkeys))
 
 
-# write.csv(rivBinData, file = "rivBinData.csv")
+write.csv(rivBinData, file = "rivBinData.csv")
 
 
 save.image("DataCleaning.RData")
