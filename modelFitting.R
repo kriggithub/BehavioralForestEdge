@@ -166,3 +166,6 @@ plottitle <- ggplot() +
 allPlots <- ggarrange(nullplot, linearplot, powerabplot, powerabcplot, exponentialplot, logisticplot, segmentedplot, plottitle, ncol = 3, nrow = 3)
 
 allPlots
+
+ggexport(allPlots, filename = "distNNplots.pdf", height = 15, width = 15)
+
