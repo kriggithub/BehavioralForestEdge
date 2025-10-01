@@ -96,7 +96,7 @@ anthBinData <- primateData %>%
 
 
 
-write.csv(anthBinData, file = "anthBinData.csv")
+# write.csv(anthBinData, file = "anthBinData.csv")
 
 
 
@@ -141,7 +141,7 @@ rivBinData <- primateData %>%
                    wtSeRivDist = wtSdRivDist/sqrt(nMonkeys))
 
 
-write.csv(rivBinData, file = "rivBinData.csv")
+# write.csv(rivBinData, file = "rivBinData.csv")
 
 
-save.image("DataCleaning.RData")
+# save.image("DataCleaning.RData")
