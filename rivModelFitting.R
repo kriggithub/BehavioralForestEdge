@@ -1,7 +1,7 @@
 # 9/20/25
 # Kurt Riggin
-# Fitting models to binned river edge data
-library(ggplot2)
+# Fitting models to binned River edge data
+library(tidyverse)
 library(ggpubr)
 library(segmented)
 library(strucchange)
@@ -20,15 +20,16 @@ predData <- data.frame(
                       length.out = 200)
 )
 
+
+
 ########################################################################################
 # % Time Resting
 rivBinDataRestSub <- rivBinData %>% 
-  filter(!is.na(wtAvgRestPct),
-         wtSdRestPct > 0)
+  filter(!is.na(wtAvgRestPct))
 ########################################################################################
 
 # null
-nullRestPct <- lm(data = rivBinDataRestSub, formula = wtAvgRestPct ~ 1, weights = 1/((wtSeRestPct)^2))
+nullRestPct <- lm(data = rivBinDataRestSub, formula = wtAvgRestPct ~ 1, weights = nMonkeys)
 nullRestPctAIC <- AIC(nullRestPct)
 predData$nullRestPct <- predict(nullRestPct, newdata = predData)
 
@@ -43,7 +44,7 @@ nullRestPctplot <- ggplot(rivBinDataRestSub, aes(x = wtAvgRivDist, y = wtAvgRest
   geom_line(data = predData, aes(y = nullRestPct))
 
 # linear
-linearRestPct <- lm(data = rivBinDataRestSub, formula = wtAvgRestPct ~ wtAvgRivDist, weights = 1/((wtSeRestPct)^2))
+linearRestPct <- lm(data = rivBinDataRestSub, formula = wtAvgRestPct ~ wtAvgRivDist, weights = nMonkeys)
 linearRestPctAIC <- AIC(linearRestPct)
 predData$linearRestPct <- predict(linearRestPct, newdata = predData)
 
@@ -57,25 +58,10 @@ linearRestPctplot <-ggplot(rivBinDataRestSub, aes(x = wtAvgRivDist, y = wtAvgRes
   theme_bw() +
   geom_line(data = predData, aes(y = linearRestPct))
 
-# power (ab parameters)
-powerabRestPct <- nlsLM(wtAvgRestPct ~ a * wtAvgRivDist^b, data = rivBinDataRestSub, start = list(a = 1, b = 1), weights = 1/((wtSeRestPct)^2))
-powerabRestPctAIC <- AIC(powerabRestPct)
-predData$powerabRestPct <- predict(powerabRestPct, newdata = predData)
 
-
-powerabRestPctplot <- ggplot(rivBinDataRestSub, aes(x = wtAvgRivDist, y = wtAvgRestPct)) +
-  geom_point() + 
-  geom_errorbar(aes(ymin = wtAvgRestPct - wtSeRestPct, ymax = wtAvgRestPct + wtSeRestPct)) +
-  labs(x = "Distance from River Edge (m)", 
-       y = "(Weighted) Mean % Time Spent Resting", 
-       title = paste0("Power (ab) Model (AIC = ", round(powerabRestPctAIC, 2), ")")
-  ) +
-  theme_bw() +
-  geom_line(data = predData, aes(y = powerabRestPct))
-
-
-# power (abc parameters)
-powerabcRestPct <- nls(wtAvgRestPct ~ a * ((wtAvgRivDist/400)^b) + c, data = rivBinDataRestSub, start = list(a = 3, b = 5, c = 3.75), weights = 1/((wtSeRestPct)^2))
+# power 
+powerabcRestPct <- nlsLM(wtAvgRestPct ~ a * ((wtAvgRivDist/400)^b) + c, data = rivBinDataRestSub, 
+                         start = list(a = 0, b = 10, c = 80), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
 powerabcRestPctAIC <- AIC(powerabcRestPct)
 predData$powerabcRestPct <- predict(powerabcRestPct, newdata = predData)
 
@@ -84,13 +70,16 @@ powerabcRestPctplot <-ggplot(rivBinDataRestSub, aes(x = wtAvgRivDist, y = wtAvgR
   geom_errorbar(aes(ymin = wtAvgRestPct - wtSeRestPct, ymax = wtAvgRestPct + wtSeRestPct)) +
   labs(x = "Distance from River Edge (m)", 
        y = "(Weighted) Mean % Time Spent Resting", 
-       title = paste0("Power (abc) Model (AIC = ", round(powerabcRestPctAIC, 2), ")")
+       title = paste0("Power Model (AIC = ", round(powerabcRestPctAIC, 2), ")")
   ) +
   theme_bw() +
   geom_line(data = predData, aes(y = powerabcRestPct))
 
+
+
 # exponential
-exponentialRestPct <- nlsLM(wtAvgRestPct ~ a * exp((wtAvgRivDist/100)*b) + c, data = rivBinDataRestSub, start = list(a = 1, b = 25, c = 75), weights = 1/((wtSeRestPct)^2))
+exponentialRestPct <- nlsLM(wtAvgRestPct ~ a * exp((wtAvgRivDist/400)*b) + c, data = rivBinDataRestSub, 
+                            start = list(a = -1, b = -1, c = 80), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
 exponentialRestPctAIC <- AIC(exponentialRestPct)
 predData$exponentialRestPct <- predict(exponentialRestPct, newdata = predData)
 
@@ -104,9 +93,11 @@ exponentialRestPctplot <-ggplot(rivBinDataRestSub, aes(x = wtAvgRivDist, y = wtA
   theme_bw() +
   geom_line(data = predData, aes(y = exponentialRestPct))
 
-# 3 parameter logistic
-logisticRestPct <- nlsLM(wtAvgRestPct ~ a/(1+(b * exp(-c*(wtAvgRivDist)/100))) + d, data = rivBinDataRestSub, 
-                         start = list(a = 0.1, b = -1.2, c = 0.6, d = 82), weights = 1/((wtSeRestPct)^2))
+
+
+# logistic
+logisticRestPct <- nlsLM(wtAvgRestPct ~ a/(1+(b * exp(-c*(wtAvgRivDist-100)/400))) + d, data = rivBinDataRestSub, 
+                         start = list(a = 10, b = 10, c = 10, d = 80), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
 logisticRestPctAIC <- AIC(logisticRestPct)
 predData$logisticRestPct <- predict(logisticRestPct, newdata = predData)
 
@@ -119,6 +110,7 @@ logisticRestPctplot <-ggplot(rivBinDataRestSub, aes(x = wtAvgRivDist, y = wtAvgR
   ) +
   theme_bw() +
   geom_line(data = predData, aes(y = logisticRestPct))
+
 
 # segmented
 segmentedRestPct <- segmented(linearRestPct, seg.Z = ~ wtAvgRivDist, psi = 250)
@@ -145,12 +137,8 @@ stepwiseRestPct <- chngptm(
   family = "gaussian",
   data = rivBinDataRestSub
 )
-
-
 stepwiseRestPctAIC <- AIC(stepwiseRestPct)
 predData$stepwiseRestPct <- predict(stepwiseRestPct, newdata = predData)
-
-
 
 stepwiseRestPctplot <-ggplot(rivBinDataRestSub, aes(x = wtAvgRivDist, y = wtAvgRestPct)) +
   geom_point() + 
@@ -163,13 +151,31 @@ stepwiseRestPctplot <-ggplot(rivBinDataRestSub, aes(x = wtAvgRivDist, y = wtAvgR
   geom_line(data = predData, aes(y = stepwiseRestPct))
 
 
+# unimodal
+unimodalRestPct <- nlsLM(wtAvgRestPct ~ a/(1 + exp((b - (wtAvgRivDist/400) + (c * (wtAvgRivDist/400)^2))* d)) + e, data = rivBinDataRestSub, 
+                         start = list(a = 0, b = -1.5, c = 10, d = 0.2, e = 80), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+
+unimodalRestPctAIC <- AIC(unimodalRestPct)
+predData$unimodalRestPct <- predict(unimodalRestPct, newdata = predData)
+
+unimodalRestPctplot <-ggplot(rivBinDataRestSub, aes(x = wtAvgRivDist, y = wtAvgRestPct)) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = wtAvgRestPct - wtSeRestPct, ymax = wtAvgRestPct + wtSeRestPct)) +
+  labs(x = "Distance from River Edge (m)", 
+       y = "(Weighted) Mean % Time Spent Resting", 
+       title = paste0("Unimodal Model (AIC = ", round(unimodalRestPctAIC, 2), ")")
+  ) +
+  theme_bw() +
+  geom_line(data = predData, aes(y = unimodalRestPct))
+
+
 
 # plot title
 plottitleRestPct <- ggplot() +
   theme_void() +
   annotate("text",
            x = 0, y = 0,
-           label = "River Model Fit Percent Time Resting", 
+           label = "River Percent Time Resting", 
            hjust = 0.5, vjust = 0, size = 5)
 
 
@@ -177,31 +183,29 @@ plottitleRestPct <- ggplot() +
 
 allPlotsRestPct <- ggarrange(nullRestPctplot, 
                              linearRestPctplot, 
-                             powerabRestPctplot, 
                              powerabcRestPctplot, 
                              exponentialRestPctplot, 
                              logisticRestPctplot, 
                              segmentedRestPctplot, 
                              stepwiseRestPctplot,
+                             unimodalRestPctplot,
                              plottitleRestPct, ncol = 3, nrow = 3)
 
-# allPlotsRestPct
 
-# ggexport(allPlotsRestPct, filename = "rivRestPctModels.pdf", height = 15, width = 15)
+ggexport(allPlotsRestPct, filename = "rivRestPctModels.pdf", height = 15, width = 15)
 
 ########################################################################################
 # % Time Moving
-rivBindDataMovingSub <- rivBinData %>% 
-  filter(!is.na(wtAvgMovingPct),
-         wtSdMovingPct > 0)
+rivBinDataMovingSub <- rivBinData %>% 
+  filter(!is.na(wtAvgMovingPct))
 ########################################################################################
 
 # null
-nullMovingPct <- lm(data = rivBindDataMovingSub, formula = wtAvgMovingPct ~ 1, weights = 1/((wtSeMovingPct)^2))
-nullMovingPctAIC <- AIC(nullMovingPct) 
+nullMovingPct <- lm(data = rivBinDataMovingSub, formula = wtAvgMovingPct ~ 1, weights = nMonkeys)
+nullMovingPctAIC <- AIC(nullMovingPct)
 predData$nullMovingPct <- predict(nullMovingPct, newdata = predData)
 
-nullMovingPctplot <- ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
+nullMovingPctplot <- ggplot(rivBinDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgMovingPct - wtSeMovingPct, ymax = wtAvgMovingPct + wtSeMovingPct)) +
   labs(x = "Distance from River Edge (m)", 
@@ -212,11 +216,11 @@ nullMovingPctplot <- ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = wtAv
   geom_line(data = predData, aes(y = nullMovingPct))
 
 # linear
-linearMovingPct <- lm(data = rivBindDataMovingSub, formula = wtAvgMovingPct ~ wtAvgRivDist, weights = 1/((wtSeMovingPct)^2))
-linearMovingPctAIC <- AIC(linearMovingPct) 
+linearMovingPct <- lm(data = rivBinDataMovingSub, formula = wtAvgMovingPct ~ wtAvgRivDist, weights = nMonkeys)
+linearMovingPctAIC <- AIC(linearMovingPct)
 predData$linearMovingPct <- predict(linearMovingPct, newdata = predData)
 
-linearMovingPctplot <-ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
+linearMovingPctplot <-ggplot(rivBinDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgMovingPct - wtSeMovingPct, ymax = wtAvgMovingPct + wtSeMovingPct)) +
   labs(x = "Distance from River Edge (m)", 
@@ -226,50 +230,32 @@ linearMovingPctplot <-ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = wtA
   theme_bw() +
   geom_line(data = predData, aes(y = linearMovingPct))
 
-# power (ab parameters)
 
-# lmMovingPctStart <- lm(log(wtAvgMovingPct) ~ log(wtAvgRivDist), data = rivBindDataMovingSub, weights = 1/((wtSeMovingPct)^2))
-# bMovingPctStart <- coef(lmMovingPctStart)[2]
-# aMovingPctStart <- exp(coef(lmMovingPctStart)[1])
-
-powerabMovingPct <- nlsLM(wtAvgMovingPct ~ a * wtAvgRivDist^b, data = rivBindDataMovingSub, start = list(a = 1, b = 1), weights = 1/((wtSeMovingPct)^2))
-powerabMovingPctAIC <- AIC(powerabMovingPct) 
-predData$powerabMovingPct <- predict(powerabMovingPct, newdata = predData)
-
-
-powerabMovingPctplot <- ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
-  geom_point() + 
-  geom_errorbar(aes(ymin = wtAvgMovingPct - wtSeMovingPct, ymax = wtAvgMovingPct + wtSeMovingPct)) +
-  labs(x = "Distance from River Edge (m)", 
-       y = "(Weighted) Mean % Time Spent Moving", 
-       title = paste0("Power (ab) Model (AIC = ", round(powerabMovingPctAIC, 2), ")")
-  ) +
-  theme_bw() +
-  geom_line(data = predData, aes(y = powerabMovingPct))
-
-
-# power (abc parameters)
-
-powerabcMovingPct <- nls(wtAvgMovingPct ~ a * ((wtAvgRivDist/400)^b) + c, data = rivBindDataMovingSub, start = list(a = 3, b = 5, c = 3.75), weights = 1/((wtSeMovingPct)^2))
-powerabcMovingPctAIC <- AIC(powerabcMovingPct) 
+# power 
+powerabcMovingPct <- nlsLM(wtAvgMovingPct ~ a * ((wtAvgRivDist/400)^b) + c, data = rivBinDataMovingSub, 
+                           start = list(a = 0, b = 1, c = 8), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+powerabcMovingPctAIC <- AIC(powerabcMovingPct)
 predData$powerabcMovingPct <- predict(powerabcMovingPct, newdata = predData)
 
-powerabcMovingPctplot <-ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
+powerabcMovingPctplot <-ggplot(rivBinDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgMovingPct - wtSeMovingPct, ymax = wtAvgMovingPct + wtSeMovingPct)) +
   labs(x = "Distance from River Edge (m)", 
        y = "(Weighted) Mean % Time Spent Moving", 
-       title = paste0("Power (abc) Model (AIC = ", round(powerabcMovingPctAIC, 2), ")")
+       title = paste0("Power Model (AIC = ", round(powerabcMovingPctAIC, 2), ")")
   ) +
   theme_bw() +
   geom_line(data = predData, aes(y = powerabcMovingPct))
 
+
+
 # exponential
-exponentialMovingPct <- nlsLM(wtAvgMovingPct ~ a * exp((wtAvgRivDist/100)*b) + c, data = rivBindDataMovingSub, start = list(a = 1, b = 25, c = 75), weights = 1/((wtSeMovingPct)^2))
-exponentialMovingPctAIC <- AIC(exponentialMovingPct) 
+exponentialMovingPct <- nlsLM(wtAvgMovingPct ~ a * exp((wtAvgRivDist/400)*b) + c, data = rivBinDataMovingSub, 
+                              start = list(a = 1, b = 1, c = 8), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+exponentialMovingPctAIC <- AIC(exponentialMovingPct)
 predData$exponentialMovingPct <- predict(exponentialMovingPct, newdata = predData)
 
-exponentialMovingPctplot <-ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
+exponentialMovingPctplot <-ggplot(rivBinDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgMovingPct - wtSeMovingPct, ymax = wtAvgMovingPct + wtSeMovingPct)) +
   labs(x = "Distance from River Edge (m)", 
@@ -279,13 +265,15 @@ exponentialMovingPctplot <-ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y 
   theme_bw() +
   geom_line(data = predData, aes(y = exponentialMovingPct))
 
-# 3 parameter logistic (MAX ITERATIONS)
-logisticMovingPct <- nlsLM(wtAvgMovingPct ~ a/(1+(b * exp(-c*(wtAvgRivDist)/100))) + d, data = rivBindDataMovingSub, 
-                         start = list(a = -1.3, b = -2864, c = 30, d = 7.94), weights = 1/((wtSeMovingPct)^2))
-logisticMovingPctAIC <- AIC(logisticMovingPct) #154
+
+
+# logistic
+logisticMovingPct <- nlsLM(wtAvgMovingPct ~ a/(1+(b * exp(-c*(wtAvgRivDist-300)/100))) + d, data = rivBinDataMovingSub, 
+                           start = list(a = 10, b = 10, c = 10, d = 8), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+logisticMovingPctAIC <- AIC(logisticMovingPct)
 predData$logisticMovingPct <- predict(logisticMovingPct, newdata = predData)
 
-logisticMovingPctplot <-ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
+logisticMovingPctplot <-ggplot(rivBinDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgMovingPct - wtSeMovingPct, ymax = wtAvgMovingPct + wtSeMovingPct)) +
   labs(x = "Distance from River Edge (m)", 
@@ -295,13 +283,13 @@ logisticMovingPctplot <-ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = w
   theme_bw() +
   geom_line(data = predData, aes(y = logisticMovingPct))
 
+
 # segmented
-# weights carry over
 segmentedMovingPct <- segmented(linearMovingPct, seg.Z = ~ wtAvgRivDist, psi = 250)
-segmentedMovingPctAIC<- AIC(segmentedMovingPct) 
+segmentedMovingPctAIC<- AIC(segmentedMovingPct)
 predData$segmentedMovingPct <- predict(segmentedMovingPct, newdata = predData)
 
-segmentedMovingPctplot <-ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
+segmentedMovingPctplot <-ggplot(rivBinDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgMovingPct - wtSeMovingPct, ymax = wtAvgMovingPct + wtSeMovingPct)) +
   labs(x = "Distance from River Edge (m)", 
@@ -314,22 +302,17 @@ segmentedMovingPctplot <-ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = 
 
 
 # stepwise
-
 stepwiseMovingPct <- chngptm(
   formula.1 = wtAvgMovingPct ~ 1,
   formula.2 =  ~ wtAvgRivDist,
   type = "step",
   family = "gaussian",
-  data = rivBindDataMovingSub
+  data = rivBinDataMovingSub
 )
-
-
 stepwiseMovingPctAIC <- AIC(stepwiseMovingPct)
 predData$stepwiseMovingPct <- predict(stepwiseMovingPct, newdata = predData)
 
-
-
-stepwiseMovingPctplot <-ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
+stepwiseMovingPctplot <-ggplot(rivBinDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgMovingPct - wtSeMovingPct, ymax = wtAvgMovingPct + wtSeMovingPct)) +
   labs(x = "Distance from River Edge (m)", 
@@ -340,46 +323,62 @@ stepwiseMovingPctplot <-ggplot(rivBindDataMovingSub, aes(x = wtAvgRivDist, y = w
   geom_line(data = predData, aes(y = stepwiseMovingPct))
 
 
+# unimodal
+unimodalMovingPct <- nlsLM(wtAvgMovingPct ~ a/(1 + exp((b - (wtAvgRivDist/400) + (c * (wtAvgRivDist/400)^2))* d)) + e, data = rivBinDataMovingSub, 
+                           start = list(a = 1.2, b = 2.8, c = 0, d = 0.2, e = 8), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+
+unimodalMovingPctAIC <- AIC(unimodalMovingPct)
+predData$unimodalMovingPct <- predict(unimodalMovingPct, newdata = predData)
+
+unimodalMovingPctplot <-ggplot(rivBinDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = wtAvgMovingPct - wtSeMovingPct, ymax = wtAvgMovingPct + wtSeMovingPct)) +
+  labs(x = "Distance from River Edge (m)", 
+       y = "(Weighted) Mean % Time Spent Moving", 
+       title = paste0("Unimodal Model (AIC = ", round(unimodalMovingPctAIC, 2), ")")
+  ) +
+  theme_bw() +
+  geom_line(data = predData, aes(y = unimodalMovingPct))
+
+
 
 # plot title
 plottitleMovingPct <- ggplot() +
   theme_void() +
   annotate("text",
            x = 0, y = 0,
-           label = "River Model Fit Percent Time Moving", 
+           label = "River Percent Time Moving", 
            hjust = 0.5, vjust = 0, size = 5)
 
 
 
 
 allPlotsMovingPct <- ggarrange(nullMovingPctplot, 
-                             linearMovingPctplot, 
-                             powerabMovingPctplot, 
-                             powerabcMovingPctplot, 
-                             exponentialMovingPctplot, 
-                             logisticMovingPctplot, 
-                             segmentedMovingPctplot, 
-                             stepwiseMovingPctplot,
-                             plottitleMovingPct, ncol = 3, nrow = 3)
+                               linearMovingPctplot, 
+                               powerabcMovingPctplot, 
+                               exponentialMovingPctplot, 
+                               logisticMovingPctplot, 
+                               segmentedMovingPctplot, 
+                               stepwiseMovingPctplot,
+                               unimodalMovingPctplot,
+                               plottitleMovingPct, ncol = 3, nrow = 3)
 
-# allPlotsMovingPct
 
-# ggexport(allPlotsMovingPct, filename = "rivMovingPctModels.pdf", height = 15, width = 15)
+ggexport(allPlotsMovingPct, filename = "rivMovingPctModels.pdf", height = 15, width = 15)
 
 
 ########################################################################################
 # % Time Feeding
-rivBindDataFeedingSub <- rivBinData %>% 
-  filter(!is.na(wtAvgFeedingPct),
-         wtSdFeedingPct > 0)
+rivBinDataFeedingSub <- rivBinData %>% 
+  filter(!is.na(wtAvgFeedingPct))
 ########################################################################################
 
 # null
-nullFeedingPct <- lm(data = rivBindDataFeedingSub, formula = wtAvgFeedingPct ~ 1, weights = 1/((wtSeFeedingPct)^2))
-nullFeedingPctAIC <- AIC(nullFeedingPct) 
+nullFeedingPct <- lm(data = rivBinDataFeedingSub, formula = wtAvgFeedingPct ~ 1, weights = nMonkeys)
+nullFeedingPctAIC <- AIC(nullFeedingPct)
 predData$nullFeedingPct <- predict(nullFeedingPct, newdata = predData)
 
-nullFeedingPctplot <- ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
+nullFeedingPctplot <- ggplot(rivBinDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgFeedingPct - wtSeFeedingPct, ymax = wtAvgFeedingPct + wtSeFeedingPct)) +
   labs(x = "Distance from River Edge (m)", 
@@ -390,11 +389,11 @@ nullFeedingPctplot <- ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y = wt
   geom_line(data = predData, aes(y = nullFeedingPct))
 
 # linear
-linearFeedingPct <- lm(data = rivBindDataFeedingSub, formula = wtAvgFeedingPct ~ wtAvgRivDist, weights = 1/((wtSeFeedingPct)^2))
-linearFeedingPctAIC <- AIC(linearFeedingPct) 
+linearFeedingPct <- lm(data = rivBinDataFeedingSub, formula = wtAvgFeedingPct ~ wtAvgRivDist, weights = nMonkeys)
+linearFeedingPctAIC <- AIC(linearFeedingPct)
 predData$linearFeedingPct <- predict(linearFeedingPct, newdata = predData)
 
-linearFeedingPctplot <-ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
+linearFeedingPctplot <-ggplot(rivBinDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgFeedingPct - wtSeFeedingPct, ymax = wtAvgFeedingPct + wtSeFeedingPct)) +
   labs(x = "Distance from River Edge (m)", 
@@ -404,51 +403,32 @@ linearFeedingPctplot <-ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y = w
   theme_bw() +
   geom_line(data = predData, aes(y = linearFeedingPct))
 
-# power (ab parameters)
 
-# lmFeedingPctStart <- lm(log(wtAvgFeedingPct) ~ log(wtAvgRivDist), data = rivBindDataFeedingSub, weights = 1/((wtSeFeedingPct)^2))
-# bFeedingPctStart <- coef(lmFeedingPctStart)[2]
-# aFeedingPctStart <- exp(coef(lmFeedingPctStart)[1])
-
-powerabFeedingPct <- nlsLM(wtAvgFeedingPct ~ a * wtAvgRivDist^b, data = rivBindDataFeedingSub, start = list(a = 1, b = 1), weights = 1/((wtSeFeedingPct)^2))
-powerabFeedingPctAIC <- AIC(powerabFeedingPct) 
-predData$powerabFeedingPct <- predict(powerabFeedingPct, newdata = predData)
-
-
-powerabFeedingPctplot <- ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
-  geom_point() + 
-  geom_errorbar(aes(ymin = wtAvgFeedingPct - wtSeFeedingPct, ymax = wtAvgFeedingPct + wtSeFeedingPct)) +
-  labs(x = "Distance from River Edge (m)", 
-       y = "(Weighted) Mean % Time Spent Feeding", 
-       title = paste0("Power (ab) Model (AIC = ", round(powerabFeedingPctAIC, 2), ")")
-  ) +
-  theme_bw() +
-  geom_line(data = predData, aes(y = powerabFeedingPct))
-
-
-# power (abc parameters) (MAX ITERATIONS)
-
-powerabcFeedingPct <- nlsLM(wtAvgFeedingPct ~ a * ((wtAvgRivDist/400)^b) + c, data = rivBindDataFeedingSub, 
-                            start = list(a = 0, b = 0, c = 10), weights = 1/((wtSeFeedingPct)^2))
-powerabcFeedingPctAIC <- AIC(powerabcFeedingPct) 
+# power 
+powerabcFeedingPct <- nlsLM(wtAvgFeedingPct ~ a * ((wtAvgRivDist/400)^b) + c, data = rivBinDataFeedingSub, 
+                            start = list(a = 0, b = 1, c = 10), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+powerabcFeedingPctAIC <- AIC(powerabcFeedingPct)
 predData$powerabcFeedingPct <- predict(powerabcFeedingPct, newdata = predData)
 
-powerabcFeedingPctplot <-ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
+powerabcFeedingPctplot <-ggplot(rivBinDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgFeedingPct - wtSeFeedingPct, ymax = wtAvgFeedingPct + wtSeFeedingPct)) +
   labs(x = "Distance from River Edge (m)", 
        y = "(Weighted) Mean % Time Spent Feeding", 
-       title = paste0("Power (abc) Model (AIC = ", round(powerabcFeedingPctAIC, 2), ")")
+       title = paste0("Power Model (AIC = ", round(powerabcFeedingPctAIC, 2), ")")
   ) +
   theme_bw() +
   geom_line(data = predData, aes(y = powerabcFeedingPct))
 
+
+
 # exponential
-exponentialFeedingPct <- nlsLM(wtAvgFeedingPct ~ a * exp((wtAvgRivDist/100)*b) + c, data = rivBindDataFeedingSub, start = list(a = 1, b = 25, c = 75), weights = 1/((wtSeFeedingPct)^2))
-exponentialFeedingPctAIC <- AIC(exponentialFeedingPct) 
+exponentialFeedingPct <- nlsLM(wtAvgFeedingPct ~ a * exp((wtAvgRivDist/400)*b) + c, data = rivBinDataFeedingSub, 
+                               start = list(a = -1, b = -1, c = 10), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+exponentialFeedingPctAIC <- AIC(exponentialFeedingPct)
 predData$exponentialFeedingPct <- predict(exponentialFeedingPct, newdata = predData)
 
-exponentialFeedingPctplot <-ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
+exponentialFeedingPctplot <-ggplot(rivBinDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgFeedingPct - wtSeFeedingPct, ymax = wtAvgFeedingPct + wtSeFeedingPct)) +
   labs(x = "Distance from River Edge (m)", 
@@ -458,13 +438,15 @@ exponentialFeedingPctplot <-ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, 
   theme_bw() +
   geom_line(data = predData, aes(y = exponentialFeedingPct))
 
-# 3 parameter logistic
-logisticFeedingPct <- nlsLM(wtAvgFeedingPct ~ a/(1+(b * exp(-c*(wtAvgRivDist)/100))) + d, data = rivBindDataFeedingSub, 
-                           start = list(a = 10, b = 10, c = 10, d = 10), weights = 1/((wtSeFeedingPct)^2))
-logisticFeedingPctAIC <- AIC(logisticFeedingPct) 
+
+
+# logistic
+logisticFeedingPct <- nlsLM(wtAvgFeedingPct ~ a/(1+(b * exp(-c*(wtAvgRivDist)/400))) + d, data = rivBinDataFeedingSub, 
+                            start = list(a = 10, b = 10, c = 10, d = 8), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+logisticFeedingPctAIC <- AIC(logisticFeedingPct)
 predData$logisticFeedingPct <- predict(logisticFeedingPct, newdata = predData)
 
-logisticFeedingPctplot <-ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
+logisticFeedingPctplot <-ggplot(rivBinDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgFeedingPct - wtSeFeedingPct, ymax = wtAvgFeedingPct + wtSeFeedingPct)) +
   labs(x = "Distance from River Edge (m)", 
@@ -474,13 +456,13 @@ logisticFeedingPctplot <-ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y =
   theme_bw() +
   geom_line(data = predData, aes(y = logisticFeedingPct))
 
+
 # segmented
-# weights carry over
 segmentedFeedingPct <- segmented(linearFeedingPct, seg.Z = ~ wtAvgRivDist, psi = 250)
-segmentedFeedingPctAIC<- AIC(segmentedFeedingPct) 
+segmentedFeedingPctAIC<- AIC(segmentedFeedingPct)
 predData$segmentedFeedingPct <- predict(segmentedFeedingPct, newdata = predData)
 
-segmentedFeedingPctplot <-ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
+segmentedFeedingPctplot <-ggplot(rivBinDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgFeedingPct - wtSeFeedingPct, ymax = wtAvgFeedingPct + wtSeFeedingPct)) +
   labs(x = "Distance from River Edge (m)", 
@@ -493,22 +475,17 @@ segmentedFeedingPctplot <-ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y 
 
 
 # stepwise
-
 stepwiseFeedingPct <- chngptm(
   formula.1 = wtAvgFeedingPct ~ 1,
   formula.2 =  ~ wtAvgRivDist,
   type = "step",
   family = "gaussian",
-  data = rivBindDataFeedingSub
+  data = rivBinDataFeedingSub
 )
-
-
 stepwiseFeedingPctAIC <- AIC(stepwiseFeedingPct)
 predData$stepwiseFeedingPct <- predict(stepwiseFeedingPct, newdata = predData)
 
-
-
-stepwiseFeedingPctplot <-ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
+stepwiseFeedingPctplot <-ggplot(rivBinDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgFeedingPct - wtSeFeedingPct, ymax = wtAvgFeedingPct + wtSeFeedingPct)) +
   labs(x = "Distance from River Edge (m)", 
@@ -519,45 +496,59 @@ stepwiseFeedingPctplot <-ggplot(rivBindDataFeedingSub, aes(x = wtAvgRivDist, y =
   geom_line(data = predData, aes(y = stepwiseFeedingPct))
 
 
+# unimodal
+unimodalFeedingPct <- nlsLM(wtAvgFeedingPct ~ a/(1 + exp((b - (wtAvgRivDist/400) + (c * (wtAvgRivDist/400)^2))* d)) + e, data = rivBinDataFeedingSub, 
+                            start = list(a = 1.2, b = 2.8, c = 0, d = 0.2, e = 8), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+unimodalFeedingPctAIC <- AIC(unimodalFeedingPct)
+predData$unimodalFeedingPct <- predict(unimodalFeedingPct, newdata = predData)
+
+unimodalFeedingPctplot <-ggplot(rivBinDataFeedingSub, aes(x = wtAvgRivDist, y = wtAvgFeedingPct)) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = wtAvgFeedingPct - wtSeFeedingPct, ymax = wtAvgFeedingPct + wtSeFeedingPct)) +
+  labs(x = "Distance from River Edge (m)", 
+       y = "(Weighted) Mean % Time Spent Feeding", 
+       title = paste0("Unimodal Model (AIC = ", round(unimodalFeedingPctAIC, 2), ")")
+  ) +
+  theme_bw() +
+  geom_line(data = predData, aes(y = unimodalFeedingPct))
+
+
 
 # plot title
 plottitleFeedingPct <- ggplot() +
   theme_void() +
   annotate("text",
            x = 0, y = 0,
-           label = "River Model Fit Percent Time Feeding", 
+           label = "River Percent Time Feeding", 
            hjust = 0.5, vjust = 0, size = 5)
 
-
-
-
 allPlotsFeedingPct <- ggarrange(nullFeedingPctplot, 
-                               linearFeedingPctplot, 
-                               powerabFeedingPctplot, 
-                               powerabcFeedingPctplot, 
-                               exponentialFeedingPctplot, 
-                               logisticFeedingPctplot, 
-                               segmentedFeedingPctplot, 
-                               stepwiseFeedingPctplot,
-                               plottitleFeedingPct, ncol = 3, nrow = 3)
+                                linearFeedingPctplot, 
+                                powerabcFeedingPctplot, 
+                                exponentialFeedingPctplot, 
+                                logisticFeedingPctplot, 
+                                segmentedFeedingPctplot, 
+                                stepwiseFeedingPctplot,
+                                unimodalFeedingPctplot,
+                                plottitleFeedingPct, ncol = 3, nrow = 3)
 
-# allPlotsFeedingPct
 
-# ggexport(allPlotsFeedingPct, filename = "rivFeedingPctModels.pdf", height = 15, width = 15)
+ggexport(allPlotsFeedingPct, filename = "rivFeedingPctModels.pdf", height = 15, width = 15)
+
+
 
 ########################################################################################
-# Number of Nearest Neighbors
-rivBindDataNumNNSub <- rivBinData %>% 
-  filter(!is.na(wtAvgNumNN),
-         wtSdNumNN > 0)
+# NumNN
+rivBinDataNumNNSub <- rivBinData %>% 
+  filter(!is.na(wtAvgNumNN))
 ########################################################################################
 
 # null
-nullNumNN <- lm(data = rivBindDataNumNNSub, formula = wtAvgNumNN ~ 1, weights = 1/((wtSeNumNN)^2))
-nullNumNNAIC <- AIC(nullNumNN) 
+nullNumNN <- lm(data = rivBinDataNumNNSub, formula = wtAvgNumNN ~ 1, weights = nMonkeys)
+nullNumNNAIC <- AIC(nullNumNN)
 predData$nullNumNN <- predict(nullNumNN, newdata = predData)
 
-nullNumNNplot <- ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
+nullNumNNplot <- ggplot(rivBinDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgNumNN - wtSeNumNN, ymax = wtAvgNumNN + wtSeNumNN)) +
   labs(x = "Distance from River Edge (m)", 
@@ -568,11 +559,11 @@ nullNumNNplot <- ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumN
   geom_line(data = predData, aes(y = nullNumNN))
 
 # linear
-linearNumNN <- lm(data = rivBindDataNumNNSub, formula = wtAvgNumNN ~ wtAvgRivDist, weights = 1/((wtSeNumNN)^2))
-linearNumNNAIC <- AIC(linearNumNN) 
+linearNumNN <- lm(data = rivBinDataNumNNSub, formula = wtAvgNumNN ~ wtAvgRivDist, weights = nMonkeys)
+linearNumNNAIC <- AIC(linearNumNN)
 predData$linearNumNN <- predict(linearNumNN, newdata = predData)
 
-linearNumNNplot <-ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
+linearNumNNplot <-ggplot(rivBinDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgNumNN - wtSeNumNN, ymax = wtAvgNumNN + wtSeNumNN)) +
   labs(x = "Distance from River Edge (m)", 
@@ -582,46 +573,32 @@ linearNumNNplot <-ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNum
   theme_bw() +
   geom_line(data = predData, aes(y = linearNumNN))
 
-# power (ab parameters)
-powerabNumNN <- nlsLM(wtAvgNumNN ~ a * wtAvgRivDist^b, data = rivBindDataNumNNSub, start = list(a = 1, b = 1), weights = 1/((wtSeNumNN)^2))
-powerabNumNNAIC <- AIC(powerabNumNN) 
-predData$powerabNumNN <- predict(powerabNumNN, newdata = predData)
 
-
-powerabNumNNplot <- ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
-  geom_point() + 
-  geom_errorbar(aes(ymin = wtAvgNumNN - wtSeNumNN, ymax = wtAvgNumNN + wtSeNumNN)) +
-  labs(x = "Distance from River Edge (m)", 
-       y = "(Weighted) Mean # of Nearest Neighbors", 
-       title = paste0("Power (ab) Model (AIC = ", round(powerabNumNNAIC, 2), ")")
-  ) +
-  theme_bw() +
-  geom_line(data = predData, aes(y = powerabNumNN))
-
-
-# power (abc parameters) (MAX ITERATIONS)
-
-powerabcNumNN <- nlsLM(wtAvgNumNN ~ a * ((wtAvgRivDist/400)^b) + c, data = rivBindDataNumNNSub, 
-                            start = list(a = 0, b = 0, c = 10), weights = 1/((wtSeNumNN)^2))
-powerabcNumNNAIC <- AIC(powerabcNumNN) 
+# power 
+powerabcNumNN <- nlsLM(wtAvgNumNN ~ a * ((wtAvgRivDist/400)^b) + c, data = rivBinDataNumNNSub, 
+                       start = list(a = 0, b = 1, c = 1), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+powerabcNumNNAIC <- AIC(powerabcNumNN)
 predData$powerabcNumNN <- predict(powerabcNumNN, newdata = predData)
 
-powerabcNumNNplot <-ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
+powerabcNumNNplot <-ggplot(rivBinDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgNumNN - wtSeNumNN, ymax = wtAvgNumNN + wtSeNumNN)) +
   labs(x = "Distance from River Edge (m)", 
        y = "(Weighted) Mean # of Nearest Neighbors", 
-       title = paste0("Power (abc) Model (AIC = ", round(powerabcNumNNAIC, 2), ")")
+       title = paste0("Power Model (AIC = ", round(powerabcNumNNAIC, 2), ")")
   ) +
   theme_bw() +
   geom_line(data = predData, aes(y = powerabcNumNN))
 
+
+
 # exponential
-exponentialNumNN <- nlsLM(wtAvgNumNN ~ a * exp((wtAvgRivDist/100)*b) + c, data = rivBindDataNumNNSub, start = list(a = 1, b = 25, c = 75), weights = 1/((wtSeNumNN)^2))
-exponentialNumNNAIC <- AIC(exponentialNumNN) 
+exponentialNumNN <- nlsLM(wtAvgNumNN ~ a * exp((wtAvgRivDist/400)*b) + c, data = rivBinDataNumNNSub, 
+                          start = list(a = -1, b = -1, c = 1), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+exponentialNumNNAIC <- AIC(exponentialNumNN)
 predData$exponentialNumNN <- predict(exponentialNumNN, newdata = predData)
 
-exponentialNumNNplot <-ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
+exponentialNumNNplot <-ggplot(rivBinDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgNumNN - wtSeNumNN, ymax = wtAvgNumNN + wtSeNumNN)) +
   labs(x = "Distance from River Edge (m)", 
@@ -631,13 +608,15 @@ exponentialNumNNplot <-ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtA
   theme_bw() +
   geom_line(data = predData, aes(y = exponentialNumNN))
 
-# 3 parameter logistic
-logisticNumNN <- nlsLM(wtAvgNumNN ~ a/(1+(b * exp(-c*(wtAvgRivDist)/100))) + d, data = rivBindDataNumNNSub, 
-                            start = list(a = 10, b = 10, c = 10, d = 10), weights = 1/((wtSeNumNN)^2))
-logisticNumNNAIC <- AIC(logisticNumNN) 
+
+
+# logistic
+logisticNumNN <- nlsLM(wtAvgNumNN ~ a/(1+(b * exp(-c*(wtAvgRivDist)/400))) + d, data = rivBinDataNumNNSub, 
+                       start = list(a = 10, b = 10, c = 10, d = 1), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+logisticNumNNAIC <- AIC(logisticNumNN)
 predData$logisticNumNN <- predict(logisticNumNN, newdata = predData)
 
-logisticNumNNplot <-ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
+logisticNumNNplot <-ggplot(rivBinDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgNumNN - wtSeNumNN, ymax = wtAvgNumNN + wtSeNumNN)) +
   labs(x = "Distance from River Edge (m)", 
@@ -647,13 +626,13 @@ logisticNumNNplot <-ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgN
   theme_bw() +
   geom_line(data = predData, aes(y = logisticNumNN))
 
+
 # segmented
-# weights carry over
 segmentedNumNN <- segmented(linearNumNN, seg.Z = ~ wtAvgRivDist, psi = 250)
-segmentedNumNNAIC<- AIC(segmentedNumNN) 
+segmentedNumNNAIC<- AIC(segmentedNumNN)
 predData$segmentedNumNN <- predict(segmentedNumNN, newdata = predData)
 
-segmentedNumNNplot <-ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
+segmentedNumNNplot <-ggplot(rivBinDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgNumNN - wtSeNumNN, ymax = wtAvgNumNN + wtSeNumNN)) +
   labs(x = "Distance from River Edge (m)", 
@@ -666,22 +645,17 @@ segmentedNumNNplot <-ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvg
 
 
 # stepwise
-
 stepwiseNumNN <- chngptm(
   formula.1 = wtAvgNumNN ~ 1,
   formula.2 =  ~ wtAvgRivDist,
   type = "step",
   family = "gaussian",
-  data = rivBindDataNumNNSub
+  data = rivBinDataNumNNSub
 )
-
-
 stepwiseNumNNAIC <- AIC(stepwiseNumNN)
 predData$stepwiseNumNN <- predict(stepwiseNumNN, newdata = predData)
 
-
-
-stepwiseNumNNplot <-ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
+stepwiseNumNNplot <-ggplot(rivBinDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgNumNN - wtSeNumNN, ymax = wtAvgNumNN + wtSeNumNN)) +
   labs(x = "Distance from River Edge (m)", 
@@ -692,149 +666,152 @@ stepwiseNumNNplot <-ggplot(rivBindDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgN
   geom_line(data = predData, aes(y = stepwiseNumNN))
 
 
+# unimodal
+unimodalNumNN <- nlsLM(wtAvgNumNN ~ a/(1 + exp((b - ((wtAvgRivDist-100)/400) + (c * ((wtAvgRivDist-100)/400)^2))* d)) + e, data = rivBinDataNumNNSub, 
+                       start = list(a = 0, b = 0, c = 0, d = 0, e = 0), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+unimodalNumNNAIC <- AIC(unimodalNumNN)
+predData$unimodalNumNN <- predict(unimodalNumNN, newdata = predData)
+
+unimodalNumNNplot <-ggplot(rivBinDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNumNN)) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = wtAvgNumNN - wtSeNumNN, ymax = wtAvgNumNN + wtSeNumNN)) +
+  labs(x = "Distance from River Edge (m)", 
+       y = "(Weighted) Mean # of Nearest Neighbors", 
+       title = paste0("Unimodal Model (AIC = ", round(unimodalNumNNAIC, 2), ")")
+  ) +
+  theme_bw() +
+  geom_line(data = predData, aes(y = unimodalNumNN))
+
+
 
 # plot title
 plottitleNumNN <- ggplot() +
   theme_void() +
   annotate("text",
            x = 0, y = 0,
-           label = "River Model Fit # of Nearest Neighbors", 
+           label = "River # of Nearest Neighbors", 
            hjust = 0.5, vjust = 0, size = 5)
 
 
 
 
 allPlotsNumNN <- ggarrange(nullNumNNplot, 
-                                linearNumNNplot, 
-                                powerabNumNNplot, 
-                                powerabcNumNNplot, 
-                                exponentialNumNNplot, 
-                                logisticNumNNplot, 
-                                segmentedNumNNplot, 
-                                stepwiseNumNNplot,
-                                plottitleNumNN, ncol = 3, nrow = 3)
+                           linearNumNNplot, 
+                           powerabcNumNNplot, 
+                           exponentialNumNNplot, 
+                           logisticNumNNplot, 
+                           segmentedNumNNplot, 
+                           stepwiseNumNNplot,
+                           unimodalNumNNplot,
+                           plottitleNumNN, ncol = 3, nrow = 3)
 
-# allPlotsNumNN
 
-# ggexport(allPlotsNumNN, filename = "rivNumNNModels.pdf", height = 15, width = 15)
+ggexport(allPlotsNumNN, filename = "rivNumNNModels.pdf", height = 15, width = 15)
+
 
 ########################################################################################
-# Distance Nearest Neighbors
-rivBindDataDistNNSub <- rivBinData %>% 
-  filter(!is.na(wtAvgDistNN),
-         wtSdDistNN > 0)
+# DistNN
+rivBinDataDistNNSub <- rivBinData %>% 
+  filter(!is.na(wtAvgDistNN))
 ########################################################################################
 
 # null
-nullDistNN <- lm(data = rivBindDataDistNNSub, formula = wtAvgDistNN ~ 1, weights = 1/((wtSeDistNN)^2))
-nullDistNNAIC <- AIC(nullDistNN) 
+nullDistNN <- lm(data = rivBinDataDistNNSub, formula = wtAvgDistNN ~ 1, weights = nMonkeys)
+nullDistNNAIC <- AIC(nullDistNN)
 predData$nullDistNN <- predict(nullDistNN, newdata = predData)
 
-nullDistNNplot <- ggplot(rivBindDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
+nullDistNNplot <- ggplot(rivBinDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgDistNN - wtSeDistNN, ymax = wtAvgDistNN + wtSeDistNN)) +
   labs(x = "Distance from River Edge (m)", 
-       y = "(Weighted) Mean Distance From Nearest Neighbors", 
+       y = "(Weighted) Mean Distance from Nearest Neighbors", 
        title = paste0("Null Model (AIC = ", round(nullDistNNAIC, 2), ")")
   ) +
   theme_bw() +
   geom_line(data = predData, aes(y = nullDistNN))
 
 # linear
-linearDistNN <- lm(data = rivBindDataDistNNSub, formula = wtAvgDistNN ~ wtAvgRivDist, weights = 1/((wtSeDistNN)^2))
-linearDistNNAIC <- AIC(linearDistNN) 
+linearDistNN <- lm(data = rivBinDataDistNNSub, formula = wtAvgDistNN ~ wtAvgRivDist, weights = nMonkeys)
+linearDistNNAIC <- AIC(linearDistNN)
 predData$linearDistNN <- predict(linearDistNN, newdata = predData)
 
-linearDistNNplot <-ggplot(rivBindDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
+linearDistNNplot <-ggplot(rivBinDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgDistNN - wtSeDistNN, ymax = wtAvgDistNN + wtSeDistNN)) +
   labs(x = "Distance from River Edge (m)", 
-       y = "(Weighted) Mean Distance From Nearest Neighbors", 
+       y = "(Weighted) Mean Distance from Nearest Neighbors", 
        title = paste0("Linear Model (AIC = ", round(linearDistNNAIC, 2), ")")
   ) +
   theme_bw() +
   geom_line(data = predData, aes(y = linearDistNN))
 
-# power (ab parameters)
 
-# lmDistNNStart <- lm(log(wtAvgDistNN) ~ log(wtAvgRivDist), data = rivBindDataDistNNSub, weights = 1/((wtSeDistNN)^2))
-# bDistNNStart <- coef(lmDistNNStart)[2]
-# aDistNNStart <- exp(coef(lmDistNNStart)[1])
-
-powerabDistNN <- nlsLM(wtAvgDistNN ~ a * wtAvgRivDist^b, data = rivBindDataDistNNSub, start = list(a = 1, b = 1), weights = 1/((wtSeDistNN)^2))
-powerabDistNNAIC <- AIC(powerabDistNN) 
-predData$powerabDistNN <- predict(powerabDistNN, newdata = predData)
-
-
-powerabDistNNplot <- ggplot(rivBindDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
-  geom_point() + 
-  geom_errorbar(aes(ymin = wtAvgDistNN - wtSeDistNN, ymax = wtAvgDistNN + wtSeDistNN)) +
-  labs(x = "Distance from River Edge (m)", 
-       y = "(Weighted) Mean Distance From Nearest Neighbors", 
-       title = paste0("Power (ab) Model (AIC = ", round(powerabDistNNAIC, 2), ")")
-  ) +
-  theme_bw() +
-  geom_line(data = predData, aes(y = powerabDistNN))
-
-
-# power (abc parameters) 
-powerabcDistNN <- nlsLM(wtAvgDistNN ~ a * ((wtAvgRivDist/400)^b) + c, data = rivBindDataDistNNSub, 
-                       start = list(a = 0, b = 400, c = 2), weights = 1/((wtSeDistNN)^2))
-powerabcDistNNAIC <- AIC(powerabcDistNN) 
+# power 
+powerabcDistNN <- nlsLM(wtAvgDistNN ~ a * ((wtAvgRivDist/400)^b) + c, data = rivBinDataDistNNSub, 
+                        start = list(a = 0, b = 1, c = 3), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+powerabcDistNNAIC <- AIC(powerabcDistNN)
 predData$powerabcDistNN <- predict(powerabcDistNN, newdata = predData)
 
-powerabcDistNNplot <-ggplot(rivBindDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
+powerabcDistNNplot <-ggplot(rivBinDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgDistNN - wtSeDistNN, ymax = wtAvgDistNN + wtSeDistNN)) +
   labs(x = "Distance from River Edge (m)", 
-       y = "(Weighted) Mean Distance From Nearest Neighbors", 
-       title = paste0("Power (abc) Model (AIC = ", round(powerabcDistNNAIC, 2), ")")
+       y = "(Weighted) Mean Distance from Nearest Neighbors", 
+       title = paste0("Power Model (AIC = ", round(powerabcDistNNAIC, 2), ")")
   ) +
   theme_bw() +
   geom_line(data = predData, aes(y = powerabcDistNN))
 
+
+
 # exponential
-exponentialDistNN <- nlsLM(wtAvgDistNN ~ a * exp((wtAvgRivDist/100)*b) + c, data = rivBindDataDistNNSub, start = list(a = 1, b = 25, c = 75), weights = 1/((wtSeDistNN)^2))
-exponentialDistNNAIC <- AIC(exponentialDistNN) 
+exponentialDistNN <- nlsLM(wtAvgDistNN ~ a * exp((wtAvgRivDist/400)*b) + c, data = rivBinDataDistNNSub, 
+                           start = list(a = 1, b = 1, c = 3), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+exponentialDistNNAIC <- AIC(exponentialDistNN)
 predData$exponentialDistNN <- predict(exponentialDistNN, newdata = predData)
 
-exponentialDistNNplot <-ggplot(rivBindDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
+exponentialDistNNplot <-ggplot(rivBinDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgDistNN - wtSeDistNN, ymax = wtAvgDistNN + wtSeDistNN)) +
   labs(x = "Distance from River Edge (m)", 
-       y = "(Weighted) Mean Distance From Nearest Neighbors", 
+       y = "(Weighted) Mean Distance from Nearest Neighbors", 
        title = paste0("Exponential Model (AIC = ", round(exponentialDistNNAIC, 2), ")")
   ) +
   theme_bw() +
   geom_line(data = predData, aes(y = exponentialDistNN))
 
-# 3 parameter logistic
-logisticDistNN <- nlsLM(wtAvgDistNN ~ a/(1+(b * exp(-c*(wtAvgRivDist)/100))) + d, data = rivBindDataDistNNSub, 
-                       start = list(a = 10, b = 10, c = 10, d = 10), weights = 1/((wtSeDistNN)^2))
-logisticDistNNAIC <- AIC(logisticDistNN) 
+
+
+# logistic
+
+logisticDistNN <- nlsLM(wtAvgDistNN ~ a/(1+(b * exp(-c*(wtAvgRivDist)/400))) + d, data = rivBinDataDistNNSub, 
+                        start = list(a = 1.5, b = 130, c = 4.5, d = 3), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+logisticDistNNAIC <- AIC(logisticDistNN)
 predData$logisticDistNN <- predict(logisticDistNN, newdata = predData)
 
-logisticDistNNplot <-ggplot(rivBindDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
+logisticDistNNplot <-ggplot(rivBinDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgDistNN - wtSeDistNN, ymax = wtAvgDistNN + wtSeDistNN)) +
   labs(x = "Distance from River Edge (m)", 
-       y = "(Weighted) Mean Distance From Nearest Neighbors", 
+       y = "(Weighted) Mean Distance from Nearest Neighbors", 
        title = paste0("Logistic Model (AIC = ", round(logisticDistNNAIC, 2), ")")
   ) +
   theme_bw() +
   geom_line(data = predData, aes(y = logisticDistNN))
 
+
+
+
 # segmented
-# weights carry over
 segmentedDistNN <- segmented(linearDistNN, seg.Z = ~ wtAvgRivDist, psi = 250)
-segmentedDistNNAIC<- AIC(segmentedDistNN) 
+segmentedDistNNAIC<- AIC(segmentedDistNN)
 predData$segmentedDistNN <- predict(segmentedDistNN, newdata = predData)
 
-segmentedDistNNplot <-ggplot(rivBindDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
+segmentedDistNNplot <-ggplot(rivBinDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgDistNN - wtSeDistNN, ymax = wtAvgDistNN + wtSeDistNN)) +
   labs(x = "Distance from River Edge (m)", 
-       y = "(Weighted) Mean Distance From Nearest Neighbors", 
+       y = "(Weighted) Mean Distance from Nearest Neighbors", 
        title = paste0("Segmented Model (AIC = ", round(segmentedDistNNAIC, 2), ")")
   ) +
   theme_bw() +
@@ -843,30 +820,42 @@ segmentedDistNNplot <-ggplot(rivBindDataDistNNSub, aes(x = wtAvgRivDist, y = wtA
 
 
 # stepwise
-
 stepwiseDistNN <- chngptm(
   formula.1 = wtAvgDistNN ~ 1,
   formula.2 =  ~ wtAvgRivDist,
   type = "step",
   family = "gaussian",
-  data = rivBindDataDistNNSub
+  data = rivBinDataDistNNSub
 )
-
-
 stepwiseDistNNAIC <- AIC(stepwiseDistNN)
 predData$stepwiseDistNN <- predict(stepwiseDistNN, newdata = predData)
 
-
-
-stepwiseDistNNplot <-ggplot(rivBindDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
+stepwiseDistNNplot <-ggplot(rivBinDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgDistNN - wtSeDistNN, ymax = wtAvgDistNN + wtSeDistNN)) +
   labs(x = "Distance from River Edge (m)", 
-       y = "(Weighted) Mean Distance From Nearest Neighbors", 
+       y = "(Weighted) Mean Distance from Nearest Neighbors", 
        title = paste0("Stepwise Model (AIC = ", round(stepwiseDistNNAIC, 2), ")")
   ) +
   theme_bw() +
   geom_line(data = predData, aes(y = stepwiseDistNN))
+
+
+# unimodal
+unimodalDistNN <- nlsLM(wtAvgDistNN ~ a/(1 + exp((b - (wtAvgRivDist/400) + (c * (wtAvgRivDist/400)^2))* d)) + e, data = rivBinDataDistNNSub, 
+                        start = list(a = 0, b = 0, c = 0, d = 0.1, e = 1), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
+unimodalDistNNAIC <- AIC(unimodalDistNN)
+predData$unimodalDistNN <- predict(unimodalDistNN, newdata = predData)
+
+unimodalDistNNplot <-ggplot(rivBinDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = wtAvgDistNN - wtSeDistNN, ymax = wtAvgDistNN + wtSeDistNN)) +
+  labs(x = "Distance from River Edge (m)", 
+       y = "(Weighted) Mean Distance from Nearest Neighbors", 
+       title = paste0("Unimodal Model (AIC = ", round(unimodalDistNNAIC, 2), ")")
+  ) +
+  theme_bw() +
+  geom_line(data = predData, aes(y = unimodalDistNN))
 
 
 
@@ -875,23 +864,22 @@ plottitleDistNN <- ggplot() +
   theme_void() +
   annotate("text",
            x = 0, y = 0,
-           label = "River Model Fit Distance from Nearest Neighbors", 
+           label = "River Distance from Nearest Neighbors", 
            hjust = 0.5, vjust = 0, size = 5)
 
 
 
 
 allPlotsDistNN <- ggarrange(nullDistNNplot, 
-                           linearDistNNplot, 
-                           powerabDistNNplot, 
-                           powerabcDistNNplot, 
-                           exponentialDistNNplot, 
-                           logisticDistNNplot, 
-                           segmentedDistNNplot, 
-                           stepwiseDistNNplot,
-                           plottitleDistNN, ncol = 3, nrow = 3)
+                            linearDistNNplot, 
+                            powerabcDistNNplot, 
+                            exponentialDistNNplot, 
+                            logisticDistNNplot, 
+                            segmentedDistNNplot, 
+                            stepwiseDistNNplot,
+                            unimodalDistNNplot,
+                            plottitleDistNN, ncol = 3, nrow = 3)
 
-# allPlotsDistNN
 
-# ggexport(allPlotsDistNN, filename = "rivDistNNModels.pdf", height = 15, width = 15)
+ggexport(allPlotsDistNN, filename = "rivDistNNModels.pdf", height = 15, width = 15)
 
