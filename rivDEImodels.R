@@ -131,9 +131,12 @@ predData$logisticNumNN <- predict(logisticNumNN, newdata = predData)
 NumNNCoefs <- coef(logisticNumNN)
 NumNNb <- NumNNCoefs[["b"]]
 NumNNc <- NumNNCoefs[["c"]]
+# for asymptotes
+NumNNa <- NumNNCoefs[["a"]]
+NumNNd <- NumNNCoefs[["d"]]
 
-
-
+NumNNd
+NumNNa + NumNNd
 
 NumNNvcovMat <- vcov(logisticNumNN)
 
