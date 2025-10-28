@@ -10,6 +10,7 @@ library(investr)
 library(msm)
 
 
+
 anthBinData <- read.csv("anthBinData.csv")
 
 # create prediction dataframe
@@ -19,15 +20,6 @@ predData <- data.frame(
                       max(anthBinData$wtAvgAnthDist, na.rm = T),
                       length.out = 200)
 )
-
-# pseudoR2 function
-pseudoR2 <- function(model, data, response){
-  y <- data[[response]]
-  yhat <- predict(model, newdata = data)
-  ss_res <- sum((y - yhat)^2, na.rm = TRUE)
-  ss_tot <- sum((y - mean(y, na.rm = TRUE))^2, na.rm = TRUE)
-  1 - ss_res/ss_tot
-}
 
 
 
@@ -42,7 +34,6 @@ powerabcDistNN <- nlsLM(wtAvgDistNN ~ a * ((wtAvgAnthDist/400)^b) + c, data = an
                         start = list(a = 0, b = 1, c = 3), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
 powerabcDistNNAIC <- AIC(powerabcDistNN)
 
-powerabcDistNNr2 <- pseudoR2(powerabcDistNN, anthBinDataDistNNSub, "wtAvgDistNN")
 
 predData$powerabcDistNN <- predict(powerabcDistNN, newdata = predData)
 
@@ -139,7 +130,6 @@ linearNumNN <- lm(data = anthBinDataNumNNSub, formula = wtAvgNumNN ~ wtAvgAnthDi
 linearNumNNAIC <- AIC(linearNumNN)
 predData$linearNumNN <- predict(linearNumNN, newdata = predData)
 
-linearNumNNr2 <- pseudoR2(linearNumNN, anthBinDataNumNNSub, "wtAvgNumNN")
 
 
 # DECREASING
@@ -230,7 +220,7 @@ linearFeedingPct <- lm(data = anthBinDataFeedingSub, formula = wtAvgFeedingPct ~
 linearFeedingPctAIC <- AIC(linearFeedingPct)
 predData$linearFeedingPct <- predict(linearFeedingPct, newdata = predData)
 
-linearFeedingPctr2 <- pseudoR2(linearFeedingPct, anthBinDataFeedingSub, "wtAvgFeedingPct")
+
 
 
 # DECREASING
@@ -321,7 +311,7 @@ nullMovingPct <- lm(data = anthBinDataMovingSub, formula = wtAvgMovingPct ~ 1, w
 nullMovingPctAIC <- AIC(nullMovingPct)
 predData$nullMovingPct <- predict(nullMovingPct, newdata = predData)
 
-nullMovingPctr2 <- pseudoR2(nullMovingPct, anthBinDataMovingSub, "wtAvgMovingPct")
+
 
 
 nullMovingPctplot <- ggplot(anthBinDataMovingSub, aes(x = wtAvgAnthDist, y = wtAvgMovingPct)) +
@@ -357,7 +347,7 @@ logisticRestPctAIC <- AIC(logisticRestPct)
 predData$logisticRestPct <- predict(logisticRestPct, newdata = predData)
 
 
-logisticRestPctr2 <- pseudoR2(logisticRestPct, anthBinDataRestSub, "wtAvgRestPct")
+
 
 # model coefficients to find point of inflection for logistic model
 RestCoefs <- coef(logisticRestPct)
@@ -460,44 +450,6 @@ save.image(file = "anthDEImodels.RData")
 # ggexport(allDEIplotsAnth, filename = "allDEIplotsAnth.pdf", height = 12, width = 15)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-library(tibble)
-
-model_summary <- tibble(
-  Model = c("Power DistNN", "Linear NumNN", "Linear Feeding", "Null Moving", "Logistic Resting"),
-  AIC   = c(powerabcDistNNAIC, linearNumNNAIC, linearFeedingPctAIC, nullMovingPctAIC, logisticRestPctAIC),
-  PseudoR2 = c(
-    pseudoR2(powerabcDistNN, anthBinDataDistNNSub, "wtAvgDistNN"),
-    pseudoR2(linearNumNN, anthBinDataNumNNSub, "wtAvgNumNN"),
-    pseudoR2(linearFeedingPct, anthBinDataFeedingSub, "wtAvgFeedingPct"),
-    pseudoR2(nullMovingPct, anthBinDataMovingSub, "wtAvgMovingPct"),
-    pseudoR2(logisticRestPct, anthBinDataRestSub, "wtAvgRestPct")
-  )
-)
-
-model_summary
-
-
-library(gt)
-
-model_summary %>%
-  gt() %>%
-  tab_header(
-    title = "Anthropogenic Edge Models",
-    subtitle = "AIC and Pseudo-R² Comparison"
-  ) %>%
-  fmt_number(columns = c(AIC, PseudoR2), decimals = 3)
 
 
 

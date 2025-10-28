@@ -7,6 +7,7 @@ library(segmented)
 library(strucchange)
 library(chngpt)
 library(minpack.lm)
+library(rcompanion)
 
 
 
@@ -57,6 +58,10 @@ linearRestPctplot <-ggplot(rivBinDataRestSub, aes(x = wtAvgRivDist, y = wtAvgRes
   ) +
   theme_bw() +
   geom_line(data = predData, aes(y = linearRestPct))
+
+
+restingPR2 <- nagelkerke(linearRestPct)
+restingPR2 <- restingPR2$Pseudo.R.squared.for.model.vs.null
 
 
 # power 
@@ -192,7 +197,7 @@ allPlotsRestPct <- ggarrange(nullRestPctplot,
                              plottitleRestPct, ncol = 3, nrow = 3)
 
 
-ggexport(allPlotsRestPct, filename = "rivRestPctModels.pdf", height = 15, width = 15)
+#ggexport(allPlotsRestPct, filename = "rivRestPctModels.pdf", height = 15, width = 15)
 
 ########################################################################################
 # % Time Moving
@@ -289,6 +294,13 @@ segmentedMovingPct <- segmented(linearMovingPct, seg.Z = ~ wtAvgRivDist, psi = 2
 segmentedMovingPctAIC<- AIC(segmentedMovingPct)
 predData$segmentedMovingPct <- predict(segmentedMovingPct, newdata = predData)
 
+
+movingPR2 <- nagelkerke(segmentedMovingPct, null = nullMovingPct)
+movingPR2 <- movingPR2$Pseudo.R.squared.for.model.vs.null
+
+
+
+
 segmentedMovingPctplot <-ggplot(rivBinDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
   geom_point() + 
   geom_errorbar(aes(ymin = wtAvgMovingPct - wtSeMovingPct, ymax = wtAvgMovingPct + wtSeMovingPct)) +
@@ -364,7 +376,7 @@ allPlotsMovingPct <- ggarrange(nullMovingPctplot,
                                plottitleMovingPct, ncol = 3, nrow = 3)
 
 
-ggexport(allPlotsMovingPct, filename = "rivMovingPctModels.pdf", height = 15, width = 15)
+#ggexport(allPlotsMovingPct, filename = "rivMovingPctModels.pdf", height = 15, width = 15)
 
 
 ########################################################################################
@@ -533,7 +545,7 @@ allPlotsFeedingPct <- ggarrange(nullFeedingPctplot,
                                 plottitleFeedingPct, ncol = 3, nrow = 3)
 
 
-ggexport(allPlotsFeedingPct, filename = "rivFeedingPctModels.pdf", height = 15, width = 15)
+#ggexport(allPlotsFeedingPct, filename = "rivFeedingPctModels.pdf", height = 15, width = 15)
 
 
 
@@ -627,6 +639,9 @@ logisticNumNNplot <-ggplot(rivBinDataNumNNSub, aes(x = wtAvgRivDist, y = wtAvgNu
   geom_line(data = predData, aes(y = logisticNumNN))
 
 
+numnnPR2 <- nagelkerke(logisticNumNN, null = nullNumNN)
+numnnPR2 <- numnnPR2$Pseudo.R.squared.for.model.vs.null
+
 # segmented
 segmentedNumNN <- segmented(linearNumNN, seg.Z = ~ wtAvgRivDist, psi = 250)
 segmentedNumNNAIC<- AIC(segmentedNumNN)
@@ -706,7 +721,7 @@ allPlotsNumNN <- ggarrange(nullNumNNplot,
                            plottitleNumNN, ncol = 3, nrow = 3)
 
 
-ggexport(allPlotsNumNN, filename = "rivNumNNModels.pdf", height = 15, width = 15)
+#ggexport(allPlotsNumNN, filename = "rivNumNNModels.pdf", height = 15, width = 15)
 
 
 ########################################################################################
@@ -734,6 +749,10 @@ nullDistNNplot <- ggplot(rivBinDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDis
 linearDistNN <- lm(data = rivBinDataDistNNSub, formula = wtAvgDistNN ~ wtAvgRivDist, weights = nMonkeys)
 linearDistNNAIC <- AIC(linearDistNN)
 predData$linearDistNN <- predict(linearDistNN, newdata = predData)
+
+
+distnnPR2 <- nagelkerke(linearDistNN)
+distnnPR2 <- distnnPR2$Pseudo.R.squared.for.model.vs.null
 
 linearDistNNplot <-ggplot(rivBinDataDistNNSub, aes(x = wtAvgRivDist, y = wtAvgDistNN)) +
   geom_point() + 
@@ -881,5 +900,5 @@ allPlotsDistNN <- ggarrange(nullDistNNplot,
                             plottitleDistNN, ncol = 3, nrow = 3)
 
 
-ggexport(allPlotsDistNN, filename = "rivDistNNModels.pdf", height = 15, width = 15)
+#ggexport(allPlotsDistNN, filename = "rivDistNNModels.pdf", height = 15, width = 15)
 

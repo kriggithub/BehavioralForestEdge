@@ -7,6 +7,7 @@ library(segmented)
 library(strucchange)
 library(chngpt)
 library(minpack.lm)
+library(rcompanion)
 
 
 
@@ -191,6 +192,9 @@ allPlotsRestPct <- ggarrange(nullRestPctplot,
                              unimodalRestPctplot,
                              plottitleRestPct, ncol = 3, nrow = 3)
 
+
+restingPR2 <- nagelkerke(logisticRestPct, null = nullRestPct)
+restingPR2 <- restingPR2$Pseudo.R.squared.for.model.vs.null
 
 # ggexport(allPlotsRestPct, filename = "anthRestPctModels.pdf", height = 15, width = 15)
 
@@ -404,6 +408,10 @@ linearFeedingPctplot <-ggplot(anthBinDataFeedingSub, aes(x = wtAvgAnthDist, y = 
   geom_line(data = predData, aes(y = linearFeedingPct))
 
 
+feedingPR2 <- nagelkerke(linearFeedingPct)
+feedingPR2 <- feedingPR2$Pseudo.R.squared.for.model.vs.null
+
+
 # power 
 powerabcFeedingPct <- nlsLM(wtAvgFeedingPct ~ a * ((wtAvgAnthDist/400)^b) + c, data = anthBinDataFeedingSub, 
                            start = list(a = 0, b = 1, c = 10), weights = nMonkeys, control = nls.lm.control(maxiter = 1000))
@@ -562,6 +570,10 @@ nullNumNNplot <- ggplot(anthBinDataNumNNSub, aes(x = wtAvgAnthDist, y = wtAvgNum
 linearNumNN <- lm(data = anthBinDataNumNNSub, formula = wtAvgNumNN ~ wtAvgAnthDist, weights = nMonkeys)
 linearNumNNAIC <- AIC(linearNumNN)
 predData$linearNumNN <- predict(linearNumNN, newdata = predData)
+
+numnnPR2 <- nagelkerke(linearNumNN)
+numnnPR2 <- numnnPR2$Pseudo.R.squared.for.model.vs.null
+
 
 linearNumNNplot <-ggplot(anthBinDataNumNNSub, aes(x = wtAvgAnthDist, y = wtAvgNumNN)) +
   geom_point() + 
@@ -763,6 +775,8 @@ powerabcDistNNplot <-ggplot(anthBinDataDistNNSub, aes(x = wtAvgAnthDist, y = wtA
   geom_line(data = predData, aes(y = powerabcDistNN))
 
 
+distnnPR2 <- nagelkerke(powerabcDistNN, null = nullDistNN)
+distnnPR2 <- distnnPR2$Pseudo.R.squared.for.model.vs.null
 
 # exponential
 exponentialDistNN <- nlsLM(wtAvgDistNN ~ a * exp((wtAvgAnthDist/400)*b) + c, data = anthBinDataDistNNSub, 
