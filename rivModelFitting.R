@@ -298,8 +298,11 @@ predData$segmentedMovingPct <- predict(segmentedMovingPct, newdata = predData)
 movingPR2 <- nagelkerke(segmentedMovingPct, null = nullMovingPct)
 movingPR2 <- movingPR2$Pseudo.R.squared.for.model.vs.null
 
+deviance(segmentedMovingPct)
+logLik(segmentedMovingPct)
+logLik(nullMovingPct)
 
-
+1-exp((2/32)*(-90.2783-(-84.87355)))
 
 segmentedMovingPctplot <-ggplot(rivBinDataMovingSub, aes(x = wtAvgRivDist, y = wtAvgMovingPct)) +
   geom_point() + 
