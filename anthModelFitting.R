@@ -4,7 +4,6 @@
 library(tidyverse)
 library(ggpubr)
 library(segmented)
-library(strucchange)
 library(chngpt)
 library(minpack.lm)
 library(rcompanion)
