@@ -363,6 +363,27 @@ restd + resta
 
 vcovMat <- vcov(logisticRestPct)
 
+
+
+# lower asymptote d
+se_lower_dm <- deltamethod(~ x4,
+                           mean = RestCoefs,
+                           cov  = vcovMat)
+lower_est <- restd
+lower_CI  <- lower_est + c(-1.96, 1.96) * se_lower_dm
+
+# upper asymptote a + d
+se_upper_dm <- deltamethod(~ x1 + x4,
+                           mean = RestCoefs,
+                           cov  = vcovMat)
+upper_est <- restd + resta
+upper_CI  <- upper_est + c(-1.96, 1.96) * se_upper_dm
+
+
+
+
+
+
 # Delta method
 RestPCTse <- deltamethod(~ 100 + (400/x3) * log(x2), 
                           mean = RestCoefs, 

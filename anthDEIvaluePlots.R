@@ -7,7 +7,7 @@ library(strucchange)
 library(chngpt)
 library(minpack.lm)
 library(investr)
-library(msm)
+
 
 anthBinData <- read.csv("anthBinData.csv")
 # DEI proportions

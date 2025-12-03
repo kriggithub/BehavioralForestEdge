@@ -9,6 +9,7 @@ library(minpack.lm)
 library(investr)
 library(msm)
 
+
 rivBinData <- read.csv("rivBinData.csv")
 
 # create prediction dataframe
@@ -135,10 +136,33 @@ NumNNc <- NumNNCoefs[["c"]]
 NumNNa <- NumNNCoefs[["a"]]
 NumNNd <- NumNNCoefs[["d"]]
 
-NumNNd
-NumNNa + NumNNd
+NumNNd # upper
+NumNNa + NumNNd # lower
 
 NumNNvcovMat <- vcov(logisticNumNN)
+
+
+
+# lower asymptote d
+se_lower_dm <- deltamethod(~ x4,
+                           mean = NumNNCoefs,
+                           cov  = NumNNvcovMat)
+lower_est <- NumNNd
+lower_CI  <- lower_est + c(-1.96, 1.96) * se_lower_dm
+
+# upper asymptote a + d
+se_upper_dm <- deltamethod(~ x1 + x4,
+                           mean = NumNNCoefs,
+                           cov  = NumNNvcovMat)
+upper_est <- NumNNa + NumNNd
+upper_CI  <- upper_est + c(-1.96, 1.96) * se_upper_dm
+
+
+
+
+
+
+
 
 # Delta method
 NumNNse <- deltamethod(~ (400/x3) * log(x2), 
