@@ -1,6 +1,7 @@
 library(knitr)
 library(dplyr)
 library(gt)
+library(webshot2)
 
 results <- tribble(
   ~Response, ~Null, ~Linear, ~Power,  ~Logistic,  ~Segmented, ~Changepoint, ~PseudoR2,    ~DEI,
@@ -16,15 +17,30 @@ results <- tribble(
   "(R) % Time Resting", 234.15, 233.59,   235.59, 236.35, 235.13, 265.19, 0.08,  "327 (24-469)"
 )
 
+
+results_clean <- results %>%
+  mutate(
+    Edge = ifelse(grepl("^\\(A\\)", Response), 
+                  "Anthropogenic Edge", 
+                  "Riparian Edge"),
+    Response = gsub("^\\(A\\) |^\\(R\\) ", "", Response)
+  )
+
+
+
+
+
 # Clean up response column and create grouping variable
 table <- results_clean %>%
   gt(rowname_col = "Response", groupname_col = "Edge") %>%
-  tab_header(
-    title = "All Edge Model Fitting",
-    subtitle = "AIC and Pseudo-R² Comparison"
-  ) %>%
+  tab_stubhead(label = "Response") %>%
+  # tab_header(
+  #   title = "All Edge Model Fitting",
+  #   subtitle = "AIC and Pseudo-R² Comparison"
+  # ) %>%
   cols_label(
-    PseudoR2 = html("Pseudo-R²")  # rename column
+    PseudoR2 = html("Pseudo-R² for best model"),
+    DEI = html("Mean depth of edge influence (DEI) (95% CI)")# rename column
   ) %>%
   # --- Anthropogenic edge bold rules ---
   tab_style(
@@ -112,7 +128,7 @@ table <- results_clean %>%
     DEI ~ px(150),
     everything() ~ px(100)
   ) %>%   tab_spanner(
-    label = "AIC",
+    label = "AIC values",
     columns = c(Null, Linear, Power, Logistic, Segmented, Changepoint)
   )
 
@@ -121,4 +137,9 @@ table <- results_clean %>%
 
 table
 
-gtsave(table, "AICtable.png")
+
+# save as html in the viewer
+# print and save as pdf in google chrome
+
+
+
